@@ -1,0 +1,57 @@
+config:
+  target: http://52.88.190.9
+  processor: "./functions.js"
+  phases:
+    # Phase 1: Small load - start at 1 user/sec, ramp up to 5 users/sec over 1 minute
+    - duration: 60        # seconds
+      arrivalRate: 1      # start rate (users per second)
+      rampTo: 5           # ramp to 5 users/sec gradually over 60 sec
+
+    # Phase 2: Medium load - hold at 10 users/sec for 2 minutes
+    - duration: 120       # seconds
+      arrivalRate: 10
+
+    # Phase 3: High load - ramp from 10 users/sec to 25 users/sec over 3 minutes
+    - duration: 180       # seconds
+      arrivalRate: 10
+      rampTo: 25
+
+scenarios:
+  - flow:
+      - function: "generatePayload"
+      - post:
+          url: "/pdxapi/postHealthAndFeatures?projectID=55"
+          headers:
+            pid: "{{ pid }}"
+            searchby: '{"flowID": 1, "branchID": 1, "unitName": "Motor 3,Motor 3"}'
+            uid: "{{ uid }}"
+            x-access-token: "{{ x-access-token }}"
+          json:
+            HealthAndFeatures:
+              - h: "{{ h }}"
+                contribution: "{{ contribution }}"
+                t: "{{ t }}"
+                fileName: "{{ fileName }}"
+                f: "{{ f }}"
+          afterResponse: "logResponse"
+      - loop: [
+          count: 4,
+          steps: [function: "generatePayload", post: {
+              url: '/pdxapi/postHealthAndFeatures?projectID=55',
+              headers: {
+                pid: "{{ pid }}",
+                searchby: '{"flowID": 1, "branchID": 1, "unitName": "Motor 3,Motor 3"}',
+                uid: "{{ uid }}",
+                x-access-token: "{{ x-access-token }}"
+              },
+              json: {
+                HealthAndFeatures: {
+                    h: "{{ h }}",
+                    contribution: "{{ contribution }}",
+                    t: "{{ t }}",
+                    fileName: "{{ fileName }}",
+                    f: "{{ f }}"
+                }
+              }, afterResponse: "logResponse"
+            }]
+        ]
